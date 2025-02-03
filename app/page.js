@@ -1,95 +1,85 @@
-import Image from "next/image";
+'use client'
+import { useEffect, useState, useRef } from "react";
+import { Amplify } from 'aws-amplify';
+import outputs from '../amplify_outputs.json';
+import { generateClient } from 'aws-amplify/data';
+
 import styles from "./page.module.css";
 
+Amplify.configure(outputs);
+
 export default function Home() {
+
+  const [theToDos, setTheToDos] = useState([]);
+  const [client, setNewClient] = useState(null);
+
+  useEffect(() => {
+
+    const initClient = async () => {
+      /**
+       * @type {import('aws-amplify/data').Client<import('../amplify/data/resource').Schema>}
+       */
+      const client = generateClient();
+      setNewClient(client);
+
+      const fetchTodos = async () => {
+        const { data: todos, errors } = await client.models.Todo.list();
+        if (errors) {
+          console.log("client.models.Todo.list() errors:")
+          console.log(errors);
+        }
+        setTheToDos(todos);
+
+      };
+      fetchTodos();
+    }
+
+    initClient();
+
+  }, []);
+
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const { errors, data: newTodo } = await client.models.Todo.create({
+      content: event.target.content.value,
+    });
+    if (errors) {
+      console.log("client.models.Todo.create() errors:")
+      console.log(errors);
+    }
+
+    document.querySelector('input[name="content"]').value = null;
+    setTheToDos([...theToDos, newTodo]);
+  }
+
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+      <section className={styles.toDosSection}>
+        <h3>To Do List</h3>
+        <div className={styles.toDos}>
+          {theToDos.map((todo) => {
+            return (
+              <div key={todo.id}>
+                <p>{todo.content}</p>
+              </div>
+            )
+          })} 
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+      <section className={styles.addToDoSection}>
+          <h3>Add To Do</h3>
+          <form onSubmit={handleSubmit}>
+            <label>
+              Content:
+              <input
+                type="text"
+                name="content"
+              />
+            </label>
+            <button type="submit">Add Todo</button>
+          </form>
+        </section>
     </div>
   );
 }
